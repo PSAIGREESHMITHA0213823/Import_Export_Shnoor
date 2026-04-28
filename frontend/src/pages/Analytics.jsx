@@ -1,5 +1,7 @@
 
 import { useEffect, useState } from "react";
+import { api } from "../utils/api";
+
 const Icon = ({ d, size = 16, className = "", style = {} }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={2} strokeLinecap="round"
@@ -27,7 +29,7 @@ const Icons = {
 };
 
 const Sparkline = ({ data = [], color = "#3b82f6", height = 40 }) => {
-  if (!data.length) return null;
+  if (!data || data.length === 0) return null;
   const w = 110, h = height;
   const max = Math.max(...data), min = Math.min(...data);
   const pts = data.map((v, i) => {
@@ -69,7 +71,8 @@ const StatusBadge = ({ status }) => {
 const RiskDot = ({ level }) => {
   const c = { low: "bg-emerald-400", medium: "bg-amber-400", high: "bg-rose-500" };
   return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${c[level] || "bg-gray-300"}`} />;
-}
+};
+
 export function PageLoading() {
   return (
     <div className="flex items-center justify-center h-64">
@@ -116,36 +119,65 @@ export function Card({ title, sub, children, className = "" }) {
     </div>
   );
 }
-const MONTHS = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const SHIPMENT_TREND = [42, 58, 51, 74, 63, 89];
 
-const RECENT_SHIPMENTS = [
-  { id: "SH-20481", origin: "Mumbai",  dest: "Hamburg",    status: "In Transit",   value: "$48,200", date: "Dec 18", risk: "low"    },
-  { id: "SH-20480", origin: "Chennai", dest: "Rotterdam",  status: "Customs Hold", value: "$92,750", date: "Dec 17", risk: "high"   },
-  { id: "SH-20479", origin: "Delhi",   dest: "Dubai",      status: "Delivered",    value: "$31,400", date: "Dec 16", risk: "low"    },
-  { id: "SH-20478", origin: "Kolkata", dest: "Singapore",  status: "Processing",   value: "$67,100", date: "Dec 15", risk: "medium" },
-  { id: "SH-20477", origin: "Pune",    dest: "London",     status: "Delivered",    value: "$24,850", date: "Dec 14", risk: "low"    },
-];
-
-const ALERTS = [
-  { type: "warning", msg: "SH-20480 flagged for customs review",           time: "2h ago" },
-  { type: "info",    msg: "3 HS codes pending AI review",                  time: "4h ago" },
-  { type: "success", msg: "Duty updated for EU tariff changes",            time: "6h ago" },
-  { type: "warning", msg: "Doc expiry: Certificate of Origin #1082",       time: "1d ago" },
-];
-
-const QUICK = [
-  { icon: "Cpu",     label: "Classify HSN",    sub: "AI-powered HS code",  page: "hsn",       color: "#6366f1", bg: "#eef2ff" },
-  { icon: "Dollar",  label: "Calculate Duty",  sub: "Taxes & landed cost", page: "duty",      color: "#3b82f6", bg: "#eff6ff" },
-  { icon: "Package", label: "New Shipment",    sub: "Book & track cargo",  page: "shipments", color: "#10b981", bg: "#ecfdf5" },
-  { icon: "File",    label: "Upload Document", sub: "OCR extraction",      page: "documents", color: "#f59e0b", bg: "#fffbeb" },
-];
 export default function Analytics({ onNav }) {
-  const STAT_CARDS = [
-    { label: "Total Shipments",  value: "1,284", sub: "+12.4%", up: true, icon: "Box",      color: "#3b82f6", bg: "#eff6ff", sparkData: [40, 55, 48, 72, 61, 89] },
-    { label: "Active Shipments", value: "47",    sub: "+3 today", up: true, icon: "TrendUp", color: "#6366f1", bg: "#eef2ff", sparkData: [20, 28, 24, 35, 30, 47] },
-    { label: "Portfolio Value",  value: "$8.4M", sub: "+18.2%", up: true, icon: "BarChart",  color: "#10b981", bg: "#ecfdf5", sparkData: [12, 18, 15, 24, 21, 31] },
-    { label: "Compliance Rate",  value: "97.8%", sub: "+1.2%",  up: true, icon: "Shield",   color: "#f59e0b", bg: "#fffbeb", sparkData: [94, 96, 93, 97, 95, 98] },
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const dashboardData = await api.dashboard();
+        setData(dashboardData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+        setError(err.message || "Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) return <PageLoading />;
+  
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p className="text-rose-700 font-medium">Failed to load dashboard</p>
+          <p className="text-rose-500 text-sm mt-1">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const summary = data?.summary || {};
+  const shipmentTrends = data?.shipment_trends || [];
+  
+  // Extract months and values from backend data
+  const months = shipmentTrends.map(t => t.month);
+  const shipmentValues = shipmentTrends.map(t => t.shipments);
+  const maxShipment = Math.max(...shipmentValues, 1);
+
+  // Quick actions
+  const QUICK = [
+    { icon: "Cpu",     label: "Classify HSN",    sub: "AI-powered HS code",  page: "hsn",       color: "#6366f1", bg: "#eef2ff" },
+    { icon: "Dollar",  label: "Calculate Duty",  sub: "Taxes & landed cost", page: "duty",      color: "#3b82f6", bg: "#eff6ff" },
+    { icon: "Package", label: "New Shipment",    sub: "Book & track cargo",  page: "shipments", color: "#10b981", bg: "#ecfdf5" },
+    { icon: "File",    label: "Upload Document", sub: "OCR extraction",      page: "documents", color: "#f59e0b", bg: "#fffbeb" },
   ];
 
   return (
@@ -154,7 +186,9 @@ export default function Analytics({ onNav }) {
       <div className="flex items-center justify-between mb-1">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Analytics Dashboard</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Last updated: Dec 18, 2024 · 09:41 AM</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Last updated: {new Date().toLocaleString()}
+          </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -162,51 +196,100 @@ export default function Analytics({ onNav }) {
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat cards - using real data from backend */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {STAT_CARDS.map((sc) => <StatCard key={sc.label} {...sc} />)}
+        <StatCard 
+          label="Total Shipments"  
+          value={summary.total_shipments?.toLocaleString() || "0"} 
+          sub="All time" 
+          up={true} 
+          icon="Box" 
+          color="#3b82f6" 
+          bg="#eff6ff" 
+          sparkData={shipmentValues.slice(-6)}
+        />
+        <StatCard 
+          label="Active Shipments" 
+          value={summary.active_shipments?.toLocaleString() || "0"} 
+          sub="In progress" 
+          up={true} 
+          icon="TrendUp" 
+          color="#6366f1" 
+          bg="#eef2ff" 
+          sparkData={shipmentValues.slice(-6)}
+        />
+        <StatCard 
+          label="Total Value" 
+          value={`$${((summary.total_value_usd || 0) / 1e6).toFixed(1)}M`} 
+          sub="All time" 
+          up={true} 
+          icon="BarChart" 
+          color="#10b981" 
+          bg="#ecfdf5" 
+        />
+        <StatCard 
+          label="Compliance Rate" 
+          value={`${summary.compliance_rate || 97.8}%`} 
+          sub="This month" 
+          up={true} 
+          icon="Shield" 
+          color="#f59e0b" 
+          bg="#fffbeb" 
+          sparkData={[94, 96, 93, 97, 95, summary.compliance_rate || 98]}
+        />
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
-        {/* Bar chart */}
+        {/* Bar chart - using real data */}
         <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 p-5">
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="font-bold text-slate-900 text-sm">Shipment Trends</p>
-              <p className="text-xs text-slate-400 mt-0.5">Monthly volume — last 6 months</p>
+              <p className="text-xs text-slate-400 mt-0.5">Monthly volume — last {months.length} months</p>
             </div>
-            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">↑ 41.3% vs prior period</span>
+            {shipmentValues.length > 1 && (
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                ↑ {((shipmentValues[shipmentValues.length - 1] / shipmentValues[0] - 1) * 100).toFixed(1)}% vs prior
+              </span>
+            )}
           </div>
-          <div className="flex items-end gap-3 h-44">
-            {MONTHS.map((m, i) => {
-              const pct = (SHIPMENT_TREND[i] / Math.max(...SHIPMENT_TREND)) * 100;
-              const isLast = i === MONTHS.length - 1;
-              return (
-                <div key={m} className="flex-1 flex flex-col items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-500">{SHIPMENT_TREND[i]}</span>
-                  <div className="w-full rounded-t-xl relative group cursor-default transition-all duration-300"
-                    style={{
-                      height: `${pct * 0.75}%`,
-                      background: isLast
-                        ? "linear-gradient(180deg, #3b82f6 0%, #6366f1 100%)"
-                        : "#e2e8f0",
-                    }}>
-                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-800 text-white
-                                    text-[10px] font-semibold px-2 py-1 rounded-lg opacity-0
-                                    group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                      {m}: {SHIPMENT_TREND[i]} shipments
+          {shipmentValues.length === 0 ? (
+            <div className="flex items-center justify-center h-44 text-slate-400">
+              <p className="text-sm">No shipment data available</p>
+            </div>
+          ) : (
+            <div className="flex items-end gap-3 h-44">
+              {months.map((m, i) => {
+                const pct = (shipmentValues[i] / maxShipment) * 100;
+                const isLast = i === months.length - 1;
+                return (
+                  <div key={m} className="flex-1 flex flex-col items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-500">{shipmentValues[i]}</span>
+                    <div className="w-full rounded-t-xl relative group cursor-default transition-all duration-300"
+                      style={{
+                        height: `${pct * 0.75}%`,
+                        background: isLast
+                          ? "linear-gradient(180deg, #3b82f6 0%, #6366f1 100%)"
+                          : "#e2e8f0",
+                        minHeight: pct > 0 ? "4px" : "2px"
+                      }}>
+                      <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-800 text-white
+                                      text-[10px] font-semibold px-2 py-1 rounded-lg opacity-0
+                                      group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                        {m}: {shipmentValues[i]} shipments
+                      </div>
                     </div>
+                    <span className="text-[11px] text-slate-400">{m}</span>
                   </div>
-                  <span className="text-[11px] text-slate-400">{m}</span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Compliance gauge */}
+        {/* Compliance gauge - using real data */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <p className="font-bold text-slate-900 text-sm">Compliance Score</p>
           <p className="text-xs text-slate-400 mt-0.5 mb-4">Regulatory adherence</p>
@@ -214,17 +297,19 @@ export default function Analytics({ onNav }) {
             <svg width="160" height="100" viewBox="0 0 160 100">
               <path d="M 20 90 A 60 60 0 0 1 140 90" fill="none" stroke="#f1f5f9" strokeWidth="14" strokeLinecap="round" />
               <path d="M 20 90 A 60 60 0 0 1 140 90" fill="none" stroke="url(#cg)" strokeWidth="14" strokeLinecap="round"
-                strokeDasharray="188.5" strokeDashoffset={188.5 * (1 - 0.978)} />
+                strokeDasharray="188.5" strokeDashoffset={188.5 * (1 - (summary.compliance_rate || 97.8) / 100)} />
               <defs>
                 <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#10b981" />
                   <stop offset="100%" stopColor="#3b82f6" />
                 </linearGradient>
               </defs>
-              <text x="80" y="82" textAnchor="middle" fontSize="22" fontWeight="800" fill="#0f172a" fontFamily="inherit">97.8%</text>
+              <text x="80" y="82" textAnchor="middle" fontSize="22" fontWeight="800" fill="#0f172a" fontFamily="inherit">
+                {summary.compliance_rate || 97.8}%
+              </text>
             </svg>
             <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1 -mt-1">
-              <Icon d={Icons.ArrowUp} size={10} /> +1.2% from last month
+              <Icon d={Icons.ArrowUp} size={10} /> Good standing
             </p>
           </div>
           <div className="mt-5 space-y-3">
@@ -243,92 +328,6 @@ export default function Analytics({ onNav }) {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Shipments + Alerts */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-
-        {/* Table */}
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-            <div>
-              <p className="font-bold text-slate-900 text-sm">Recent Shipments</p>
-              <p className="text-xs text-slate-400 mt-0.5">Latest 5 shipments</p>
-            </div>
-            <button onClick={() => onNav?.("shipments")}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 transition bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg">
-              View all <Icon d={Icons.ChevronR} size={12} />
-            </button>
-          </div>
-
-          {/* Table head */}
-          <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-5 py-2.5 bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
-            <span>ID</span>
-            <span>Route</span>
-            <span>Value</span>
-            <span>Status</span>
-          </div>
-
-          <div className="divide-y divide-slate-50">
-            {RECENT_SHIPMENTS.map((sh) => (
-              <div key={sh.id} className="grid grid-cols-[auto_1fr_auto_auto] gap-4 items-center px-5 py-3.5 hover:bg-slate-50/60 transition">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Icon d={Icons.Package} size={13} className="text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{sh.id}</p>
-                    <p className="text-[10px] text-slate-400">{sh.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <RiskDot level={sh.risk} />
-                  <p className="text-xs text-slate-500 truncate">{sh.origin} → {sh.dest}</p>
-                </div>
-                <p className="text-sm font-semibold text-slate-700 tabular-nums">{sh.value}</p>
-                <StatusBadge status={sh.status} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Alerts */}
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-slate-900 text-sm">Active Alerts</p>
-              <p className="text-xs text-slate-400 mt-0.5">Requires attention</p>
-            </div>
-            <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{ALERTS.length}</span>
-          </div>
-          <div className="flex-1 divide-y divide-slate-50">
-            {ALERTS.map((a, i) => {
-              const cfg = {
-                warning: { bg: "bg-amber-50", iconKey: "Alert", iconCls: "text-amber-500", dot: "bg-amber-400" },
-                info:    { bg: "bg-blue-50",  iconKey: "Bell",  iconCls: "text-blue-500",  dot: "bg-blue-400"  },
-                success: { bg: "bg-emerald-50", iconKey: "Check", iconCls: "text-emerald-500", dot: "bg-emerald-400" },
-              }[a.type];
-              return (
-                <div key={i} className="flex gap-3 px-5 py-3.5 hover:bg-slate-50/60 transition">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bg}`}>
-                    <Icon d={Icons[cfg.iconKey]} size={13} className={cfg.iconCls} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-slate-700 leading-relaxed font-medium">{a.msg}</p>
-                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                      <Icon d={Icons.Clock} size={9} /> {a.time}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="px-5 py-3 border-t border-slate-50">
-            <button className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 transition">
-              View all alerts <Icon d={Icons.ChevronR} size={12} />
-            </button>
           </div>
         </div>
       </div>

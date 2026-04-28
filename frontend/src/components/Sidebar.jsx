@@ -29,35 +29,15 @@ const I = {
   Bell:    <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>,
 };
 
-const NAV = [
-  {
-    section: "Overview",
-    items: [
-      { id: "analytics", label: "Analytics",   icon: "Grid"    },
-    ],
-  },
-  {
-    section: "Tools",
-    items: [
-      { id: "hsn",  label: "HSN Classifier",  icon: "Cpu",    badge: "AI" },
-      { id: "duty", label: "Duty Calculator", icon: "Dollar"              },
-      { id: "risk", label: "Risk Assessment", icon: "Shield"              },
-    ],
-  },
-  {
-    section: "Operations",
-    items: [
-      { id: "shipments", label: "Shipments",  icon: "Box"     },
-      { id: "documents", label: "Documents",  icon: "File"    },
-      { id: "payments",  label: "Payments",   icon: "Payment" },
-    ],
-  },
-  {
-    section: "Admin",
-    items: [
-      { id: "users",    label: "User Management", icon: "Users"    },
-    ],
-  },
+const NAV_ITEMS = [
+  { id: "analytics", label: "Analytics", icon: "Grid" },
+  { id: "hsn", label: "HSN Classifier", icon: "Cpu", badge: "AI" },
+  { id: "duty", label: "Duty Calculator", icon: "Dollar" },
+  { id: "risk", label: "Risk Assessment", icon: "Shield" },
+  { id: "shipments", label: "Shipments", icon: "Box" },
+  { id: "documents", label: "Documents", icon: "File" },
+  { id: "payments", label: "Payments", icon: "Payment" },
+  { id: "users", label: "User Management", icon: "Users" },
 ];
 
 export default function Sidebar({ active, onNav }) {
@@ -80,12 +60,11 @@ export default function Sidebar({ active, onNav }) {
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
-        /* KEY FIX: do NOT set overflow hidden here — let children control it */
         boxShadow: "4px 0 24px rgba(0,0,0,0.25)",
       }}
     >
 
-      {/* ── Brand ── flex-shrink: 0 so it never collapses */}
+      {/* Brand */}
       <div style={{
         flexShrink: 0,
         display: "flex", alignItems: "center", gap: "12px",
@@ -119,138 +98,95 @@ export default function Sidebar({ active, onNav }) {
         </div>
       </div>
 
-      {/* ── Nav ── flex: 1 + overflow-y: auto so it scrolls and never pushes footer off */}
+      {/* Navigation - No section headings */}
       <nav style={{
         flex: 1,
-        padding: "8px 10px",
+        padding: "16px 10px",
         overflowY: "auto",
         overflowX: "hidden",
-        /* Custom scrollbar — thin and subtle */
         scrollbarWidth: "thin",
         scrollbarColor: "rgba(255,255,255,0.12) transparent",
       }}>
-        {NAV.map(({ section, items }) => (
-          <div key={section} style={{ marginBottom: "4px" }}>
-            <p style={{
-              fontSize: "0.6rem",
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.2)",
-              textTransform: "uppercase",
-              letterSpacing: "0.14em",
-              padding: "16px 10px 6px",
-              margin: 0,
-            }}>
-              {section}
-            </p>
+        {NAV_ITEMS.map(({ id, label, icon, badge }) => {
+          const isActive = active === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onNav(id)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: "none",
+                cursor: "pointer",
+                marginBottom: "2px",
+                transition: "all 0.15s ease",
+                background: isActive ? "rgba(59,130,246,0.16)" : "transparent",
+                color: isActive ? "#ffffff" : "rgba(255,255,255,0.42)",
+                textAlign: "left",
+                position: "relative",
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.75)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.42)";
+                }
+              }}
+            >
+              {isActive && (
+                <span style={{
+                  position: "absolute", left: 0,
+                  top: "50%", transform: "translateY(-50%)",
+                  width: "3px", height: "18px",
+                  borderRadius: "0 3px 3px 0",
+                  background: "linear-gradient(180deg,#60a5fa,#818cf8)",
+                }} />
+              )}
 
-            {items.map(({ id, label, icon, badge }) => {
-              const isActive = active === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => onNav(id)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "9px 12px",
-                    borderRadius: "10px",
-                    border: "none",
-                    cursor: "pointer",
-                    marginBottom: "1px",
-                    transition: "all 0.15s ease",
-                    background: isActive ? "rgba(59,130,246,0.16)" : "transparent",
-                    color: isActive ? "#ffffff" : "rgba(255,255,255,0.42)",
-                    textAlign: "left",
-                    position: "relative",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.75)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.42)";
-                    }
-                  }}
-                >
-                  {/* Active left bar */}
-                  {isActive && (
-                    <span style={{
-                      position: "absolute", left: 0,
-                      top: "50%", transform: "translateY(-50%)",
-                      width: "3px", height: "18px",
-                      borderRadius: "0 3px 3px 0",
-                      background: "linear-gradient(180deg,#60a5fa,#818cf8)",
-                    }} />
-                  )}
+              <Ico d={I[icon]} size={15}
+                style={{ color: isActive ? "#60a5fa" : "inherit", flexShrink: 0 }}
+              />
 
-                  <Ico d={I[icon]} size={15}
-                    style={{ color: isActive ? "#60a5fa" : "inherit", flexShrink: 0 }}
-                  />
+              <span style={{
+                flex: 1, fontSize: "0.8125rem",
+                fontWeight: isActive ? 600 : 500,
+              }}>
+                {label}
+              </span>
 
-                  <span style={{
-                    flex: 1, fontSize: "0.8125rem",
-                    fontWeight: isActive ? 600 : 500,
-                  }}>
-                    {label}
-                  </span>
+              {badge && (
+                <span style={{
+                  fontSize: "0.58rem",
+                  fontWeight: 700,
+                  padding: "2px 7px",
+                  borderRadius: "999px",
+                  background: "rgba(99,102,241,0.28)",
+                  color: "#a5b4fc",
+                  letterSpacing: "0.04em",
+                }}>
+                  {badge}
+                </span>
+              )}
 
-                  {badge && (
-                    <span style={{
-                      fontSize: "0.58rem",
-                      fontWeight: 700,
-                      padding: "2px 7px",
-                      borderRadius: "999px",
-                      background: "rgba(99,102,241,0.28)",
-                      color: "#a5b4fc",
-                      letterSpacing: "0.04em",
-                    }}>
-                      {badge}
-                    </span>
-                  )}
-
-                  {isActive && (
-                    <Ico d={I.ChevR} size={12}
-                      style={{ color: "rgba(96,165,250,0.5)", flexShrink: 0 }} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+              {isActive && (
+                <Ico d={I.ChevR} size={12}
+                  style={{ color: "rgba(96,165,250,0.5)", flexShrink: 0 }} />
+              )}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* ── Alert strip ── flex-shrink: 0 so it always stays visible */}
-      <div style={{
-        flexShrink: 0,
-        margin: "0 10px 10px",
-        padding: "10px 12px",
-        borderRadius: "10px",
-        background: "rgba(59,130,246,0.1)",
-        border: "1px solid rgba(59,130,246,0.2)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "4px" }}>
-          <Ico d={I.Bell} size={12} style={{ color: "#60a5fa", flexShrink: 0 }} />
-          <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#93c5fd" }}>
-            4 Active Alerts
-          </span>
-        </div>
-        <p style={{
-          fontSize: "0.68rem",
-          color: "rgba(255,255,255,0.35)",
-          lineHeight: 1.5,
-          margin: 0,
-        }}>
-          SH-20480 requires customs review
-        </p>
-      </div>
-
-      {/* ── User footer ── flex-shrink: 0 so it always stays visible */}
+      {/* User Footer */}
       <div style={{
         flexShrink: 0,
         borderTop: "1px solid rgba(255,255,255,0.06)",
@@ -258,7 +194,7 @@ export default function Sidebar({ active, onNav }) {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 4px" }}>
           <div style={{
-             width: "32px", height: "32px",
+            width: "32px", height: "32px",
             borderRadius: "10px",
             background: "linear-gradient(135deg,#3b82f6,#6366f1)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -270,7 +206,6 @@ export default function Sidebar({ active, onNav }) {
             {initials}
           </div>
 
-          {/* Name + role */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
               color: "#fff",
@@ -291,7 +226,6 @@ export default function Sidebar({ active, onNav }) {
             </p>
           </div>
 
-          {/* Logout */}
           <button
             onClick={handleLogout}
             title="Sign out"
@@ -318,5 +252,4 @@ export default function Sidebar({ active, onNav }) {
     </aside>
   );
 }
-
 

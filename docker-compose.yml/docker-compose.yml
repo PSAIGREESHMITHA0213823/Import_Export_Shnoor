@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: trade_intelligence_postgres
+    environment:
+      POSTGRES_DB: trade_intelligence_db
+      POSTGRES_USER: trade_admin
+      POSTGRES_PASSWORD: TradeSecure2024!
+      POSTGRES_ROOT_PASSWORD: TradeSecure2024!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - trade_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: trade_intelligence_redis
+    command: redis-server --appendonly yes --requirepass RedisSecure2024!
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trade_network
+    restart: unless-stopped
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trade_intelligence_backend
+    environment:
+      DATABASE_URL: postgresql://trade_admin:TradeSecure2024!@postgres:5432/trade_intelligence_db
+      REDIS_URL: redis://:RedisSecure2024!@redis:6379
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production-2024}
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    networks:
+      - trade_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trade_intelligence_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - trade_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: trade_intelligence_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - trade_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+
+networks:
+  trade_network:
+    driver: bridge

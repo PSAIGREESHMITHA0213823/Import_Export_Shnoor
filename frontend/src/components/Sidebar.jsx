@@ -33,10 +33,11 @@ const NAV_ITEMS = [
   { id: "analytics", label: "Analytics", icon: "Grid" },
   { id: "hsn", label: "HSN Classifier", icon: "Cpu", badge: "AI" },
   { id: "duty", label: "Duty Calculator", icon: "Dollar" },
-  { id: "risk", label: "Risk Assessment", icon: "Shield" },
+  
   { id: "shipments", label: "Shipments", icon: "Box" },
   { id: "documents", label: "Documents", icon: "File" },
   { id: "payments", label: "Payments", icon: "Payment" },
+  { id: "risk", label: "Risk Assessment", icon: "Shield" },
   { id: "users", label: "User Management", icon: "Users" },
 ];
 

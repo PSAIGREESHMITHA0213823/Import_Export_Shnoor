@@ -1,32 +1,9 @@
 
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-const DEMO_ACCOUNTS = [
-  { label: "admin / admin123",      username: "admin",     password: "admin123"  },
-  { label: "demo / demo123",        username: "demo",      password: "demo123"   },
-  { label: "exporter1 / export123", username: "exporter1", password: "export123" },
-  { label: "broker1 / broker123",   username: "broker1",   password: "broker123" },
-];
-
-function BrandMark({ size = 40 }) {
-  return (
-    <div style={{
-      width: size, height: size,
-      background: "linear-gradient(135deg,#C8A050,#A07828)",
-      borderRadius: size * 0.22,
-      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-    }}>
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none">
-        <rect x="3"  y="3"  width="7" height="7" rx="1.5" fill="white" />
-        <rect x="14" y="3"  width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-        <rect x="3"  y="14" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-        <rect x="14" y="14" width="7" height="7" rx="1.5" fill="white" />
-      </svg>
-    </div>
-  );
-}
+import ShnoorLogo from "../components/ShnoorLogo";
 
 function Field({ label, children }) {
   return (
@@ -97,7 +74,7 @@ export default function Login() {
 
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative", zIndex: 2 }}>
-          <BrandMark size={42} />
+          <ShnoorLogo size={82} />
           <div>
             <div style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "0.14em" }}>SHNOOR™</div>
             <div style={{ fontSize: 8, color: "#C8A050", letterSpacing: "0.3em", textTransform: "uppercase", marginTop: 2 }}>INTERNATIONAL LLC</div>
@@ -154,25 +131,7 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Demo chips */}
-          <div style={{ background: "rgba(200,160,80,0.06)", border: "1px solid rgba(200,160,80,0.18)", borderRadius: 12, padding: "14px 16px", marginBottom: 28 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(200,160,80,0.8)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
-              Demo accounts — click to fill
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {DEMO_ACCOUNTS.map((a) => (
-                <button
-                  key={a.username}
-                  onClick={() => fill(a.username, a.password)}
-                  style={{ fontSize: 11, padding: "5px 12px", borderRadius: 100, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(200,160,80,0.25)", color: "rgba(200,160,80,0.85)", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(200,160,80,0.15)"; e.currentTarget.style.borderColor = "#C8A050"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(200,160,80,0.25)"; }}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           {/* Error */}
           {error && (

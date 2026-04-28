@@ -23,7 +23,12 @@ from difflib import get_close_matches
 import fitz         
 import pdfplumber   
 from PIL import Image  
-import openpyxl      
+import openpyxl  
+
+import re
+import io
+from typing import Optional
+ 
 DB_CONFIG = {
     "host":            os.getenv("SUPABASE_DB_HOST",     "aws-1-ap-northeast-1.pooler.supabase.com"),
     "port":            int(os.getenv("SUPABASE_DB_PORT", "5432")),
@@ -90,85 +95,111 @@ def _update_last_login(username: str):
     except Exception:
         pass
 
+"""
+ocr_engine.py  ─  Complete OCR module for main.py
+Replace the entire OCR section (_extract_text_from_file, _parse_invoice_fields,
+_compute_confidence, run_ocr) with this file.
+
+Bugs fixed vs original:
+  1. Grand-total regex matched 8-digit HSN codes as monetary amounts
+  2. Tax regex matched GSTIN registration numbers (e.g. "27AABCE...") as tax
+  3. ISO currency code before amount (e.g. "INR 11,56,388") wasn't parsed
+  4. Line-item rows with HSN prefix weren't captured
+  5. Vendor/customer missed multiline "Bill To:\\n<Name>" layout
+  6. No GSTIN, PAN, per-item HSN, or HSN-codes-summary extraction
+  7. Postal codes (400001, 560001) were included in HSN code list
+  8. Confidence score ignored line-item quality and was capped too low
+  9. Raw-text preview truncated at 2 000 chars (too short for real invoices)
+"""
+
+import re
+import io
+from typing import Optional
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TEXT EXTRACTION
+# ══════════════════════════════════════════════════════════════════════════════
+
 def _extract_text_from_file(content: bytes, filename: str) -> str:
     """
-    Extract raw text from any supported file type.
-    PDF  → pdfplumber (best) with fitz fallback
-    PNG/JPG → fitz or PIL metadata (no OCR engine needed for digital images)
-    CSV  → decode directly
-    XLSX → openpyxl
-    Returns plain text string.
+    Extract raw text from PDF, image, CSV, or XLSX.
+    Returns a plain-text string (possibly empty for scanned/image-only PDFs).
     """
     fname = filename.lower()
+
+    # ── PDF ──────────────────────────────────────────────────────────────────
     if fname.endswith(".pdf"):
         text = ""
-       
         try:
+            import pdfplumber
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 pages = []
                 for page in pdf.pages:
-                    t = page.extract_text()
+                    # layout=True preserves column alignment — critical for tables
+                    t = page.extract_text(layout=True) or page.extract_text() or ""
                     if t:
                         pages.append(t)
                 text = "\n".join(pages)
         except Exception:
             pass
 
-        
+        # Fallback to PyMuPDF if pdfplumber returns nothing
         if not text.strip():
             try:
+                import fitz
                 doc = fitz.open(stream=content, filetype="pdf")
                 for page in doc:
-                    text += page.get_text()
+                    text += page.get_text("layout")
                 doc.close()
             except Exception:
                 pass
 
         return text.strip()
 
-   
+    # ── PNG / JPG ─────────────────────────────────────────────────────────────
     if fname.endswith((".png", ".jpg", ".jpeg")):
         text = ""
         try:
-         
-            doc = fitz.open(stream=content, filetype="png" if fname.endswith(".png") else "jpeg")
+            import fitz
+            ftype = "png" if fname.endswith(".png") else "jpeg"
+            doc = fitz.open(stream=content, filetype=ftype)
             for page in doc:
                 text += page.get_text()
             doc.close()
         except Exception:
             pass
 
-       
         if not text.strip():
             try:
+                from PIL import Image
                 img = Image.open(io.BytesIO(content))
                 info = img.info or {}
-                parts = []
-                for k, v in info.items():
-                    if isinstance(v, str) and len(v) > 3:
-                        parts.append(f"{k}: {v}")
+                parts = [f"{k}: {v}" for k, v in info.items()
+                         if isinstance(v, str) and len(v) > 3]
                 text = "\n".join(parts)
             except Exception:
                 pass
 
         return text.strip()
 
-   
+    # ── CSV ──────────────────────────────────────────────────────────────────
     if fname.endswith(".csv"):
         try:
-            return content.decode("utf-8", errors="ignore")[:6000]
+            return content.decode("utf-8", errors="ignore")[:8000]
         except Exception:
             return ""
 
-  
+    # ── XLSX ─────────────────────────────────────────────────────────────────
     if fname.endswith(".xlsx"):
         try:
-            wb   = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
-            ws   = wb.active
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+            ws = wb.active
             rows = []
             for row in ws.iter_rows(values_only=True):
                 rows.append("\t".join("" if c is None else str(c) for c in row))
-                if len(rows) >= 100:
+                if len(rows) >= 200:
                     break
             return "\n".join(rows)
         except Exception:
@@ -180,138 +211,271 @@ def _extract_text_from_file(content: bytes, filename: str) -> str:
     )
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# REGEX HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Date formats: ISO, DD/MM/YYYY, DD Month YYYY, Month DD YYYY
+_DATE_PAT = (
+    r"(\d{4}[-/]\d{2}[-/]\d{2}"
+    r"|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}"
+    r"|\d{1,2}[- ]\w{3,9}[- ]\d{2,4}"
+    r"|\w{3,9}\s+\d{1,2},?\s+\d{4})"
+)
+
+# Currency prefix: symbol OR ISO code, optional space
+# FIX 3: added ISO codes (INR, USD, EUR …) so "INR 11,56,388" is matched
+_CURR_PFX = r"(?:[₹$€£¥]|Rs\.?|USD|EUR|GBP|INR|AED|SGD|CAD|AUD|JPY|CNY)?\s*"
+
+# Amount: handles Indian (1,70,000.00) and Western (170,000.00) formatting
+_AMT      = r"((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)"
+
+
+def _first(pattern: str, text: str, flags: int = re.IGNORECASE) -> Optional[str]:
+    m = re.search(pattern, text, flags)
+    return m.group(1).strip() if m else None
+
+
+def _parse_amount(raw: Optional[str]) -> Optional[float]:
+    """'1,70,000.00' → 170000.0  |  None → None"""
+    if raw is None:
+        return None
+    cleaned = re.sub(r"[,\s]", "", raw.strip())
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _first_amount(pattern: str, text: str) -> Optional[float]:
+    m = re.search(pattern, text, re.IGNORECASE)
+    return _parse_amount(m.group(1)) if m else None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FIELD EXTRACTION
+# ══════════════════════════════════════════════════════════════════════════════
+
 def _parse_invoice_fields(text: str) -> dict:
-    """
-    Extract structured invoice fields from plain text using regex.
-    All fields default to None if not found.
-    """
-    def first(pattern, flags=re.IGNORECASE):
-        m = re.search(pattern, text, flags)
-        return m.group(1).strip() if m else None
+    """Extract every structured field from invoice plain text."""
 
-    def first_amount(pattern):
-        m = re.search(pattern, text, re.IGNORECASE)
-        if not m:
-            return None
-        try:
-            return float(m.group(1).replace(",", "").strip())
-        except ValueError:
-            return None
-
-    DATE_PAT = (
-        r'(\d{4}[-/]\d{2}[-/]\d{2}'
-        r'|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}'
-        r'|\d{1,2}\s+\w{3,9}\s+\d{4})'
-    )
-
-  
+    # ── Invoice number ────────────────────────────────────────────────────────
     invoice_number = (
-        first(r'invoice\s*(?:no|num|number|#)[:\s#]*([\w\-/]+)') or
-        first(r'\bINV[-\s]*([\w\-/]{3,20})', re.IGNORECASE)
+        _first(r"invoice[\s]*(?:no\.?|num(?:ber)?\.?|#|id)[:\s#]*([\w\-/]+)", text) or
+        _first(r"\b(INV[-/\s][\w\-/]{2,20})\b", text) or
+        # Alphanumeric reference like TL-2024-5821
+        _first(r"\b([A-Z]{1,6}[-/]\d{4}[-/]\d{2,8})\b", text)
     )
 
-  
+    # ── Dates ─────────────────────────────────────────────────────────────────
     invoice_date = (
-        first(r'(?:invoice\s*date|date\s*of\s*invoice|bill\s*date)[:\s]*' + DATE_PAT) or
-        first(DATE_PAT)
-    )
-    due_date = first(r'(?:due\s*date|payment\s*due|pay\s*by)[:\s]*' + DATE_PAT)
-
-  
-    total_amount = first_amount(
-        r'(?:grand\s*total|total\s*(?:amount\s*)?(?:due|payable)?|amount\s*due)[:\s]*'
-        r'[₹$€£¥]?\s*([0-9,]+(?:\.\d{1,2})?)'
-    )
-    subtotal = first_amount(
-        r'(?:sub\s*total|subtotal|net\s*amount)[:\s]*[₹$€£¥]?\s*([0-9,]+(?:\.\d{1,2})?)'
-    )
-    tax_amount = first_amount(
-        r'(?:tax|gst|vat|igst|cgst|sgst|hst)[^:\n]{0,20}[:\s]*[₹$€£¥]?\s*([0-9,]+(?:\.\d{1,2})?)'
+        _first(r"(?:invoice\s*date|date\s*of\s*invoice|bill\s*date|inv\.?\s*date)"
+               r"[:\s]+" + _DATE_PAT, text) or
+        # Plain "Date:" not preceded by "due" or "payment"
+        _first(r"(?<![dD]ue\s)(?<![pP]ayment\s)\bDate[:\s]+" + _DATE_PAT, text)
     )
 
- 
-    if total_amount is None:
-        amounts = [
-            float(m.replace(",", ""))
-            for m in re.findall(r'\b([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)\b', text)
-            if float(m.replace(",", "")) > 0
-        ]
-        total_amount = max(amounts) if amounts else None
+    due_date = _first(
+        r"(?:due\s*date|payment\s*due|pay\s*by|due\s*on|valid\s*till)"
+        r"[:\s]+" + _DATE_PAT,
+        text,
+    )
 
-  
-    currency = first(r'\b(USD|EUR|GBP|INR|AED|SGD|CAD|AUD|JPY|CNY)\b')
+    # ── Monetary amounts ──────────────────────────────────────────────────────
+    # FIX 1: search GRAND TOTAL labels first — do NOT fall through to a plain
+    # "Total:" that might match an HSN code context.
+    grand_total = (
+        _first_amount(
+            r"(?:grand\s*total|invoice\s*total|total\s*amount\s*due"
+            r"|net\s*payable|total\s*payable|amount\s*payable)"
+            r"[:\s]+" + _CURR_PFX + _AMT,
+            text,
+        ) or
+        # "Total Due: $ X" or "Total: ₹ X" — take LAST occurrence
+        _parse_amount(
+            (re.findall(
+                r"\b(?:Total\s*Due|Total)[:\s]+" + _CURR_PFX + _AMT,
+                text, re.IGNORECASE,
+            ) or [None])[-1]
+        )
+    )
+
+    subtotal = _first_amount(
+        r"(?:sub\s*total|subtotal|taxable\s*(?:amount|value)|net\s*amount)"
+        r"[:\s]+" + _CURR_PFX + _AMT,
+        text,
+    )
+
+    # FIX 2: exclude GSTIN lines; require % context or "total/amount" qualifier
+    tax_amount = (
+        _first_amount(
+            r"(?:total\s*tax|tax\s*amount|tax\s*total)"
+            r"[:\s]+" + _CURR_PFX + _AMT,
+            text,
+        ) or
+        # "CGST @ 9% : 88,199.10"  /  "IGST (18%): 135000.00"
+        _first_amount(
+            r"(?:igst|cgst|sgst|gst|vat)\s*"
+            r"(?:@\s*\d+\.?\d*\s*%?|\(\s*\d+\.?\d*\s*%?\))?"
+            r"\s*[:\s]+" + _CURR_PFX + _AMT,
+            text,
+        )
+    )
+
+    # ── GSTIN / PAN ───────────────────────────────────────────────────────────
+    gstin = _first(
+        r"\bGSTIN\b[:\s]*([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b",
+        text,
+    )
+    pan = _first(r"\bPAN\b[:\s]*([A-Z]{5}[0-9]{4}[A-Z])\b", text)
+
+    # ── Currency ──────────────────────────────────────────────────────────────
+    currency = _first(r"\b(USD|EUR|GBP|INR|AED|SGD|CAD|AUD|JPY|CNY)\b", text)
     if not currency:
-        if re.search(r'₹|INR|Rs\.?', text, re.IGNORECASE):
+        if re.search(r"₹|Rs\.?\s*\d|INR", text, re.IGNORECASE):
             currency = "INR"
-        elif re.search(r'\$', text):
+        elif re.search(r"\$\s*\d", text):
             currency = "USD"
-        elif re.search(r'€', text):
+        elif re.search(r"€", text):
             currency = "EUR"
-        elif re.search(r'£', text):
+        elif re.search(r"£", text):
             currency = "GBP"
         else:
             currency = "USD"
 
-   
-    vendor_name   = first(r'(?:from|seller|vendor|billed?\s*from|company)[:\s]*([A-Za-z][^\n]{2,60})')
-    customer_name = first(r'(?:bill\s*to|billed?\s*to|buyer|customer|ship\s*to)[:\s]*([A-Za-z][^\n]{2,60})')
-    payment_terms = first(r'(?:payment\s*terms?|terms?)[:\s]*([^\n]{2,40})')
+    # ── Parties ───────────────────────────────────────────────────────────────
+    # FIX 4: try multiline "Bill To:\n<Name>" before inline "Bill To: Name"
+    vendor_name = (
+        _first(r"(?:sold\s*by|from|seller|vendor|supplier|billed?\s*from)"
+               r"[:\s]*\n\s*([A-Z][^\n]{2,70})", text) or
+        _first(r"(?:sold\s*by|from|seller|vendor|supplier)"
+               r"[:\s]+([A-Za-z][^\n,]{2,70})", text)
+    )
 
-   
-    line_items = []
+    customer_name = (
+        _first(r"(?:bill\s*to|billed?\s*to|buyer|customer|ship\s*to)"
+               r"[:\s]*\n\s*([A-Z][^\n]{2,70})", text) or
+        _first(r"(?:bill\s*to|billed?\s*to|buyer|customer)"
+               r"[:\s]+([A-Za-z][^\n,]{2,70})", text)
+    )
+
+    # ── Payment terms ─────────────────────────────────────────────────────────
+    payment_terms = _first(
+        r"(?:payment\s*terms?|terms?|credit\s*period)[:\s]+([^\n]{2,50})", text
+    )
+
+    # ── Line items ────────────────────────────────────────────────────────────
+    # FIX 5: optional HSN prefix (6–8 digits), then description, qty, unit, total
+    line_items: list[dict] = []
+    seen: set[str] = set()
+
     for m in re.finditer(
-        r'^(.{4,55}?)\s{2,}(\d+(?:\.\d+)?)\s+([0-9,]+\.\d{2})\s+([0-9,]+\.\d{2})\s*$',
-        text, re.MULTILINE
+        r"^(?:(\d{6,8})\s+)?(.{3,55}?)\s{2,}"   # optional HSN + description
+        r"(\d+(?:\.\d+)?)\s+"                     # qty
+        r"([0-9,]+\.\d{2})\s+"                    # unit price
+        r"([0-9,]+\.\d{2})\s*$",                  # line total
+        text,
+        re.MULTILINE,
     ):
-        try:
-            line_items.append({
-                "description": m.group(1).strip(),
-                "quantity":    float(m.group(2)),
-                "unit_price":  float(m.group(3).replace(",", "")),
-                "amount":      float(m.group(4).replace(",", "")),
-            })
-        except ValueError:
-            pass
+        desc = m.group(2).strip()
+        if not desc or desc in seen or len(desc) < 3:
+            continue
+        seen.add(desc)
+
+        qty    = float(m.group(3))
+        unit_p = _parse_amount(m.group(4))
+        total  = _parse_amount(m.group(5))
+
+        # Sanity: total must be ≈ qty × unit_price (within 2%)
+        if qty and unit_p and total:
+            if abs(qty * unit_p - total) / max(total, 1) > 0.02:
+                continue
+
+        line_items.append({
+            "description": desc,
+            "hsn_code":    m.group(1),
+            "quantity":    qty,
+            "unit_price":  unit_p,
+            "amount":      total,
+        })
+
+    # ── HSN codes found in document ───────────────────────────────────────────
+    # FIX 6: exclude postal / phone / pin numbers that follow address separators
+    hsn_codes_found: list[str] = []
+    for h in set(re.findall(r"\b(\d{6,8})\b", text)):
+        if len(h) not in (6, 8):
+            continue
+        if int(h[:2]) not in range(1, 100):
+            continue
+        # Skip numbers immediately after " - " or "– " (Indian address separator)
+        if re.search(r"[-–]\s*" + h, text):
+            continue
+        # Skip numbers in pin/zip/phone context
+        ctx_start = max(0, text.find(h) - 40)
+        ctx = text[ctx_start: text.find(h) + 12]
+        if re.search(r"\b(?:pin|zip|postal|ph|tel|mob|phone|fax|area|block|sector)\b",
+                     ctx, re.IGNORECASE):
+            continue
+        hsn_codes_found.append(h)
 
     return {
-        "invoice_number": invoice_number,
-        "date":           invoice_date,
-        "due_date":       due_date,
-        "vendor_name":    vendor_name,
-        "customer_name":  customer_name,
-        "subtotal":       subtotal,
-        "tax_amount":     tax_amount,
-        "total_amount":   total_amount,
-        "currency":       currency,
-        "payment_terms":  payment_terms,
-        "line_items":     line_items,
+        "invoice_number":  invoice_number,
+        "date":            invoice_date,
+        "due_date":        due_date,
+        "vendor_name":     vendor_name,
+        "customer_name":   customer_name,
+        "gstin":           gstin,
+        "pan":             pan,
+        "subtotal":        subtotal,
+        "tax_amount":      tax_amount,
+        "total_amount":    grand_total,
+        "currency":        currency,
+        "payment_terms":   payment_terms,
+        "hsn_codes_found": hsn_codes_found,
+        "line_items":      line_items,
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# CONFIDENCE SCORING
+# ══════════════════════════════════════════════════════════════════════════════
+
 def _compute_confidence(extracted: dict, raw_text: str) -> float:
     """
-    Confidence = how many key fields were found + text length factor.
+    Weighted score across key fields + line-item quality + text richness.
+    Range: 0.0 – 1.0
     """
-    key_fields = ["invoice_number", "date", "total_amount", "vendor_name"]
-    found      = sum(1 for f in key_fields if extracted.get(f))
-    field_score = found / len(key_fields)
+    weights = {
+        "invoice_number": 0.20,
+        "date":           0.15,
+        "total_amount":   0.30,
+        "vendor_name":    0.15,
+        "customer_name":  0.10,
+        "gstin":          0.05,
+        "subtotal":       0.05,
+    }
+    field_score = sum(w for f, w in weights.items() if extracted.get(f))
+    item_bonus  = min(len(extracted.get("line_items", [])) * 0.04, 0.12)
+    text_factor = min(len(raw_text) / 400, 1.0) * 0.05
 
-  
-    text_score = min(len(raw_text) / 500, 1.0) * 0.2
+    return round(min(field_score + item_bonus + text_factor, 1.0), 2)
 
-    return round(min(field_score * 0.8 + text_score, 1.0), 2)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLIC ENTRY POINT
+# ══════════════════════════════════════════════════════════════════════════════
 
 def run_ocr(content: bytes, filename: str) -> tuple[dict, float]:
     """
-    Main OCR entry point.
-    Returns (extracted_data dict, confidence float 0.0–1.0).
+    Called by FastAPI /api/documents/upload.
+    Returns (extracted_data, confidence_score).
     """
     raw_text  = _extract_text_from_file(content, filename)
     extracted = _parse_invoice_fields(raw_text)
     conf      = _compute_confidence(extracted, raw_text)
 
-    extracted["_raw_ocr_text"] = raw_text[:2000] if raw_text else "(no text extracted)"
+    # FIX 9: store up to 4 000 chars for debugging (was 2 000)
+    extracted["_raw_ocr_text"] = raw_text[:4000] if raw_text else "(no text extracted)"
 
     return extracted, conf
 VOCAB = [

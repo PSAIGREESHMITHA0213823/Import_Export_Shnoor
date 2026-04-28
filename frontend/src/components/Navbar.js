@@ -123,13 +123,6 @@ function Navbar() {
             </Link>
           ))}
           
-          {/* THEME SWITCHER - HERE */}
-          <div style={{ display: 'flex', gap: 8, marginLeft: '8px' }}>
-            {Object.keys(themes).map(k => (
-              <ThemeDot key={k} themeKey={k} current={currentTheme} onChange={setCurrentTheme} />
-            ))}
-          </div>
-          
           <div style={{ display: 'flex', gap: '12px', marginLeft: '8px' }}>
             <Link to="/login" style={{
               background: 'transparent',

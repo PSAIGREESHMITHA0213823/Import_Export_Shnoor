@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import ShnoorLogo from "../components/ShnoorLogo";
 
 const ROLES = [
-  { value: "importer", label: "Importer", icon: "📦", desc: "Import goods" },
-  { value: "exporter", label: "Exporter", icon: "🚢", desc: "Export goods" },
-  { value: "broker",   label: "Broker",   icon: "🤝", desc: "Customs broker" },
-  { value: "admin",    label: "Admin",    icon: "⚙️", desc: "Platform admin" },
+  { value: "importer", label: "Importer",  desc: "Import goods" },
+  { value: "exporter", label: "Exporter",  desc: "Export goods" },
+  { value: "broker",   label: "Broker",    desc: "Customs broker" },
+  { value: "admin",    label: "Admin",     desc: "Platform admin" },
 ];
 
 const FEATURES = [
@@ -17,18 +18,7 @@ const FEATURES = [
   ["Document Intelligence",  "OCR extraction from invoices with high confidence"],
 ];
 
-function BrandMark({ size = 40 }) {
-  return (
-    <div style={{ width: size, height: size, background: "linear-gradient(135deg,#C8A050,#A07828)", borderRadius: size * 0.22, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none">
-        <rect x="3"  y="3"  width="7" height="7" rx="1.5" fill="white" />
-        <rect x="14" y="3"  width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-        <rect x="3"  y="14" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-        <rect x="14" y="14" width="7" height="7" rx="1.5" fill="white" />
-      </svg>
-    </div>
-  );
-}
+
 
 function Field({ label, half, children }) {
   return (
@@ -103,14 +93,14 @@ export default function Register() {
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
       {/* ── LEFT PANEL ── */}
-      <div style={{ background: "linear-gradient(160deg,#06121F 0%,#0C2040 55%,#07161F 100%)", padding: "48px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
+      <div style={{ background: "linear-gradient(160deg,#06121F 0%,#0C2040 55%,#07161F 100%)", padding: "48px 56px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, opacity: 0.03, backgroundImage: "linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px)", backgroundSize: "44px 44px", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle,rgba(200,160,80,0.09) 0%,transparent 65%)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: "30%", left: "-5%", width: 280, height: 280, borderRadius: "50%", background: "radial-gradient(circle,rgba(200,160,80,0.05) 0%,transparent 70%)", pointerEvents: "none" }} />
 
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative", zIndex: 2 }}>
-          <BrandMark size={42} />
+          <ShnoorLogo size={82} />
           <div>
             <div style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "0.14em" }}>SHNOOR™</div>
             <div style={{ fontSize: 8, color: "#C8A050", letterSpacing: "0.3em", textTransform: "uppercase", marginTop: 2 }}>INTERNATIONAL LLC</div>
@@ -253,7 +243,6 @@ export default function Register() {
                       onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
                     >
                       <input type="radio" name="role" value={r.value} checked={active} onChange={set("role")} style={{ display: "none" }} />
-                      <span style={{ fontSize: 22 }}>{r.icon}</span>
                       <span style={{ fontSize: 13, fontWeight: 600, color: active ? "#C8A050" : "rgba(255,255,255,0.7)" }}>{r.label}</span>
                       <span style={{ fontSize: 11, color: active ? "rgba(200,160,80,0.65)" : "rgba(255,255,255,0.35)" }}>{r.desc}</span>
                     </label>

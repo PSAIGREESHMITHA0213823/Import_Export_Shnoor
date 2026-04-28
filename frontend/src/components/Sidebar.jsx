@@ -1,133 +1,3 @@
-// import { useAuth } from "../context/AuthContext";
-// import { useNavigate } from "react-router-dom";
-
-// /* ── Icons ── */
-// function BrandIcon() {
-//   return (
-//     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//       <rect x="3" y="3" width="7" height="7" rx="1.5" fill="white" />
-//       <rect x="14" y="3" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-//       <rect x="3" y="14" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.5)" />
-//       <rect x="14" y="14" width="7" height="7" rx="1.5" fill="white" />
-//     </svg>
-//   );
-// }
-
-// const icon = (d) =>
-//   function Icon({ className = "w-5 h-5" }) {
-//     return (
-//       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-//         {d}
-//       </svg>
-//     );
-//   };
-
-// // Define all icons
-// const GridIcon   = icon(<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>);
-// const SearchIcon = icon(<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></>);
-// const DollarIcon = icon(<><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>);
-// const AlertIcon  = icon(<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>);
-// const BoxIcon    = icon(<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>);
-// const FileIcon   = icon(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></>);
-// const UsersIcon  = icon(<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>);
-// const LogoutIcon = icon(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>);
-// const PaymentIcon = icon(<><path d="M20 12V8h-2M20 4h-2M4 4H2v2M2 8v2M22 12h-2M22 16h-2M4 20H2v-2M2 16v-2"/><path d="M7 12h10"/><path d="M12 7v10"/><circle cx="12" cy="12" r="10"/></>);
-
-// // NAV with Payments added
-// const NAV = [
-//   {
-//     section: "Overview",
-//     items: [{ id: "analytics", label: "Analytics", icon: GridIcon }],
-//   },
-//   {
-//     section: "Tools",
-//     items: [
-//       { id: "hsn",  label: "HSN Classifier",  icon: SearchIcon, badge: "AI" },
-//       { id: "duty", label: "Duty Calculator",  icon: DollarIcon },
-//       { id: "risk", label: "Risk Assessment",  icon: AlertIcon  },
-//     ],
-//   },
-//   {
-//     section: "Operations",
-//     items: [
-//       { id: "shipments",  label: "Shipments",  icon: BoxIcon  },
-//       { id: "documents",  label: "Documents",  icon: FileIcon },
-//       { id: "payments",   label: "Payments",   icon: PaymentIcon }, // Added Payments
-//     ],
-//   },
-//   {
-//     section: "Admin",
-//     items: [{ id: "users", label: "User Management", icon: UsersIcon }],
-//   },
-// ];
-
-// export default function Sidebar({ active, onNav }) {
-//   const { user, logout } = useAuth();
-//   const navigate = useNavigate();
-
-//   const initials = (user?.full_name || user?.username || "?")
-//     .split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-
-//   const handleLogout = () => { logout(); navigate("/login"); };
-
-//   return (
-//     <aside className="w-60 min-h-screen bg-[#1a3a6b] flex flex-col fixed top-0 left-0 bottom-0 z-50">
-//       {/* Brand */}
-//       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-//         <div className="w-8 h-8 bg-[#c8992a] rounded-lg flex items-center justify-center flex-shrink-0">
-//           <BrandIcon />
-//         </div>
-//         <span className="text-white text-lg font-bold tracking-tight">TradeLint</span>
-//       </div>
-
-//       {/* Nav */}
-//       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-//         {NAV.map(({ section, items }) => (
-//           <div key={section}>
-//             <p className="text-[10px] font-medium text-white/30 uppercase tracking-widest px-2 pt-4 pb-1">
-//               {section}
-//             </p>
-//             {items.map(({ id, label, icon: Icon, badge }) => (
-//               <button
-//                 key={id}
-//                 onClick={() => onNav(id)}
-//                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition
-//                   ${active === id
-//                     ? "bg-white/[0.14] text-white"
-//                     : "text-white/60 hover:bg-white/[0.07] hover:text-white"
-//                   }`}
-//               >
-//                 <Icon className="w-4 h-4 flex-shrink-0" />
-//                 <span className="flex-1 text-left">{label}</span>
-//                 {badge && (
-//                   <span className="text-[10px] font-semibold bg-[#c8992a] text-white px-2 py-0.5 rounded-full">
-//                     {badge}
-//                   </span>
-//                 )}
-//               </button>
-//             ))}
-//           </div>
-//         ))}
-//       </nav>
-
-//       {/* User footer */}
-//       <div className="border-t border-white/10 px-3 py-4">
-//         <div className="flex items-center gap-2.5 px-2">
-//           <div className="w-8 h-8 rounded-full bg-[#c8992a] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-//             {initials}
-//           </div>
-//           <div className="flex-1 min-w-0">
-//             <p className="text-white text-sm font-medium truncate">{user?.full_name || user?.username}</p>
-//             <p className="text-white/40 text-xs capitalize">{user?.role}</p>
-//           </div>
-//           <button onClick={handleLogout} title="Sign out" className="text-white/30 hover:text-white transition p-1">
-//             <LogoutIcon className="w-4 h-4" />
-//           </button>
-//         </div>
-//       </div>
-//     </aside>
-//   );
-// }
 
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -187,7 +57,7 @@ const NAV = [
     section: "Admin",
     items: [
       { id: "users",    label: "User Management", icon: "Users"    },
-      { id: "settings", label: "Settings",        icon: "Settings" },
+     
     ],
   },
 ];
@@ -255,7 +125,7 @@ export default function Sidebar({ active, onNav }) {
 
       {/* ── Nav ────────────────────────────────────────────────────────── */}
       <nav style={{
-        flex: 1, padding: "8px 10px", overflowY: "auto",
+        flex: 1, padding: "8px 10px",
       }}>
         {NAV.map(({ section, items }) => (
           <div key={section} style={{ marginBottom: "4px" }}>

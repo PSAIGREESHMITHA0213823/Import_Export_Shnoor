@@ -1,5 +1,121 @@
 
-import { useState } from "react";
+// import { useState, useEffect } from "react";
+// import { useAuth } from "../context/AuthContext";
+// import Sidebar from "../components/Sidebar";
+// import Analytics from "./Analytics";
+// import HSNClassifier from "./HSNClassifier";
+// import DutyCalculator from "./DutyCalculator";
+// import RiskAssessment from "./RiskAssessment";
+// import Shipments from "./Shipments";
+// import Documents from "./Documents";
+// import UserManagement from "./UserManagement";
+// import PaymentHistory from "./PaymentHistory";
+
+// const PAGE_TITLES = {
+//   analytics: "Analytics Dashboard",
+//   hsn:       "HSN Classifier",
+//   duty:      "Duty Calculator",
+//   risk:      "Risk Assessment",
+//   shipments: "Shipments",
+//   documents: "Documents",
+//   users:     "User Management",
+//   payments:  "Payment History",
+// };
+
+// export default function Dashboard() {
+//   const [page, setPage] = useState("analytics");
+//   const [sidebarOpen, setSidebarOpen] = useState(false);
+//   const { user } = useAuth();
+
+//   // Close sidebar on route change (mobile UX)
+//   const handleNav = (newPage) => {
+//     setPage(newPage);
+//     setSidebarOpen(false);
+//   };
+
+//   // Close sidebar when resizing to desktop
+//   useEffect(() => {
+//     const handleResize = () => {
+//       if (window.innerWidth >= 768) {
+//         setSidebarOpen(false);
+//       }
+//     };
+//     window.addEventListener("resize", handleResize);
+//     return () => window.removeEventListener("resize", handleResize);
+//   }, []);
+
+//   // Prevent body scroll when mobile sidebar is open
+//   useEffect(() => {
+//     document.body.style.overflow = sidebarOpen ? "hidden" : "";
+//     return () => { document.body.style.overflow = ""; };
+//   }, [sidebarOpen]);
+
+//   const renderPage = () => {
+//     switch (page) {
+//       case "analytics": return <Analytics onNav={handleNav} />;
+//       case "hsn":       return <HSNClassifier />;
+//       case "duty":      return <DutyCalculator />;
+//       case "risk":      return <RiskAssessment />;
+//       case "shipments": return <Shipments />;
+//       case "documents": return <Documents />;
+//       case "users":     return <UserManagement />;
+//       case "payments":  return <PaymentHistory user={user} />;
+//       default:          return <Analytics onNav={handleNav} />;
+//     }
+//   };
+
+//   return (
+//     <div className="flex min-h-screen bg-[#f0ede8]">
+
+//       {/* ── DESKTOP: persistent sidebar ── */}
+//       <div className="hidden md:block fixed inset-y-0 left-0 z-30 w-60">
+//         <Sidebar active={page} onNav={handleNav} />
+//       </div>
+//       {sidebarOpen && (
+//         <div
+//           className="fixed inset-0 z-40 bg-black/50 md:hidden"
+//           onClick={() => setSidebarOpen(false)}
+//         />
+//       )}
+//       <div
+//         className={`
+//           fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out
+//           md:hidden
+//           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+//         `}
+//       >
+//         <Sidebar active={page} onNav={handleNav} />
+//       </div>
+//       <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+//         <header className="md:hidden sticky top-0 z-30 flex items-center gap-3 bg-[#f0ede8] border-b border-black/10 px-4 py-3 shadow-sm">
+//           <button
+//             onClick={() => setSidebarOpen(true)}
+//             aria-label="Open menu"
+//             className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+//           >
+//             <svg
+//               className="w-6 h-6 text-gray-700"
+//               fill="none"
+//               stroke="currentColor"
+//               strokeWidth={2}
+//               viewBox="0 0 24 24"
+//             >
+//               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+//             </svg>
+//           </button>
+//           <span className="font-semibold text-gray-800 text-sm truncate">
+//             {PAGE_TITLES[page] ?? "Dashboard"}
+//           </span>
+//         </header>
+//         <main className="flex-1 p-2" >
+//           {renderPage()}
+//         </main>
+//       </div>
+//     </div>
+//   );
+// }
+
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import Analytics from "./Analytics";
@@ -13,51 +129,107 @@ import PaymentHistory from "./PaymentHistory";
 
 const PAGE_TITLES = {
   analytics: "Analytics Dashboard",
-  hsn:       "HSN Classifier",
-  duty:      "Duty Calculator",
-  risk:      "Risk Assessment",
+  hsn: "HSN Classifier",
+  duty: "Duty Calculator",
+  risk: "Risk Assessment",
   shipments: "Shipments",
   documents: "Documents",
-  users:     "User Management",
-  payments:  "Payment History",
+  users: "User Management",
+  payments: "Payment History",
 };
 
 export default function Dashboard() {
   const [page, setPage] = useState("analytics");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
+
+  const handleNav = (newPage) => {
+    setPage(newPage);
+    setSidebarOpen(false);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const renderPage = () => {
     switch (page) {
-      case "analytics": return <Analytics onNav={setPage} />;
-      case "hsn":       return <HSNClassifier />;
-      case "duty":      return <DutyCalculator />;
-      case "risk":      return <RiskAssessment />;
+      case "analytics": return <Analytics onNav={handleNav} />;
+      case "hsn": return <HSNClassifier />;
+      case "duty": return <DutyCalculator />;
+      case "risk": return <RiskAssessment />;
       case "shipments": return <Shipments />;
       case "documents": return <Documents />;
-      case "users":     return <UserManagement />;
-      case "payments":  return <PaymentHistory user={user} />;
-      default:          return <Analytics onNav={setPage} />;
+      case "users": return <UserManagement />;
+      case "payments": return <PaymentHistory user={user} />;
+      default: return <Analytics onNav={handleNav} />;
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f0ede8]">
-      <Sidebar active={page} onNav={setPage} />
+    <div className="flex h-screen overflow-hidden bg-[#f0ede8]">
 
-      <div className="flex-1 ml-60 flex flex-col min-h-screen">
-        {/* Topbar */}
-        <header className="h-14 bg-white border-b border-gray-100 px-6 flex items-center justify-between sticky top-0 z-40">
-          <h1 className="font-bold text-gray-900 tracking-tight">{PAGE_TITLES[page]}</h1>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-2 h-2 bg-green-500 rounded-full" />
-            API Online
-          </div>
+      {/* Desktop Sidebar (SCROLL ENABLED) */}
+      <div className="hidden md:block fixed inset-y-0 left-0 z-30 w-60 overflow-y-auto">
+        <Sidebar active={page} onNav={handleNav} />
+      </div>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar (SCROLL ENABLED) */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto
+          transform transition-transform duration-300 ease-in-out
+          md:hidden
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <Sidebar active={page} onNav={handleNav} />
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex-1 md:ml-60 flex flex-col h-screen overflow-hidden">
+
+        {/* Mobile Header */}
+        <header className="md:hidden sticky top-0 z-30 flex items-center gap-3 bg-[#f0ede8] border-b border-black/10 px-4 py-3 shadow-sm">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-black/10 transition"
+          >
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <span className="font-semibold text-gray-800 text-sm truncate">
+            {PAGE_TITLES[page] ?? "Dashboard"}
+          </span>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 p-6">
+        {/* Scrollable Content Area */}
+        <main className="flex-1 p-2 overflow-y-auto">
           {renderPage()}
         </main>
+
       </div>
     </div>
   );

@@ -2773,7 +2773,7 @@ export default function Shipments() {
   ];
 
   return (
-    <div className="p-6 max-w-4xl space-y-4" style={{ background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="p-6 space-y-4" style={{ background: "#f8fafc", minHeight: "100vh" }}>
       <div className="mb-2">
         <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <Icon d={TruckIcon} size={22} />

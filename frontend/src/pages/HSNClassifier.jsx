@@ -401,7 +401,7 @@ export default function HSNClassifier() {
   ];
 
   return (
-    <div className="p-6 max-w-3xl space-y-4" style={{ background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="p-6  space-y-4" style={{ background: "#f8fafc", minHeight: "100vh" }}>
 
       {/* Page header */}
       <div className="mb-1">

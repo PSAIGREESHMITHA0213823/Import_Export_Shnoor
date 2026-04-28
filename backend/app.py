@@ -12,11 +12,7 @@ from passlib.context import CryptContext
 
 from database import get_db, User, Document, Shipment, HSNResult, DutyCalculation, PaymentHistory, TrackingLog
 from models import hsn_classifier, risk_model
-
-# Initialize FastAPI
 app = FastAPI(title="AI Import Export Intelligence System", version="3.0.0")
-
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
@@ -25,7 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security
 security = HTTPBearer()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "your-secret-key-2024"
@@ -50,11 +45,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
-
-# ============================================
-# 1. USER AUTHENTICATION
-# ============================================
-
 from pydantic import BaseModel, EmailStr
 
 class UserRegister(BaseModel):
@@ -125,10 +115,6 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
         "full_name": db_user.full_name
     }
 
-# ============================================
-# 2. DOCUMENT UPLOAD & INTELLIGENCE
-# ============================================
-
 @app.post("/api/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -140,11 +126,11 @@ async def upload_document(
     file_hash = hashlib.md5(await file.read()).hexdigest()
     await file.seek(0)
     
-    # Simulate OCR processing
+    
     content = await file.read()
     extracted_text = content[:500].decode('utf-8', errors='ignore')
     
-    # Extract data using NLP simulation
+   
     extracted_data = {
         "invoice_number": f"INV-{random.randint(10000, 99999)}",
         "date": datetime.now().strftime("%Y-%m-%d"),
@@ -190,20 +176,16 @@ async def get_document(document_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
 
-# ============================================
-# 3. HSN CLASSIFICATION (ML-BASED)
-# ============================================
-
 class HSNRequest(BaseModel):
     product_description: str
     country: str = "IN"
 
 @app.post("/api/hsn/classify")
 async def classify_hsn(request: HSNRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Use ML model to classify
+  
     result = hsn_classifier.predict(request.product_description)
     
-    # Save result to database
+  
     result_id = f"HSN_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}"
     hsn_result = HSNResult(
         result_id=result_id,
@@ -230,10 +212,6 @@ async def correct_hsn(result_id: str, correct_hsn: str, notes: str = "", current
     
     return {"success": True, "message": "Correction recorded for model retraining"}
 
-# ============================================
-# 4. DUTY & TAX ENGINE
-# ============================================
-
 class DutyRequest(BaseModel):
     hsn_code: str
     product_value: float
@@ -246,7 +224,7 @@ class DutyRequest(BaseModel):
 
 @app.post("/api/duty/calculate")
 async def calculate_duty(request: DutyRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Tariff rates by country
+ 
     tariffs = {
         "IN": {"basic": 0.10, "igst": 0.18, "sws": 0.10},
         "US": {"basic": 0.05, "igst": 0.00, "sws": 0.02},
@@ -255,7 +233,6 @@ async def calculate_duty(request: DutyRequest, current_user: dict = Depends(get_
         "SG": {"basic": 0.00, "igst": 0.07, "sws": 0.00}
     }
     
-    # Anti-dumping by HSN
     anti_dumping_rates = {
         "84713000": 0.00, "85171300": 0.15, "30049099": 0.00,
         "87032319": 0.25, "62034200": 0.10
@@ -270,7 +247,6 @@ async def calculate_duty(request: DutyRequest, current_user: dict = Depends(get_
     igst = (assessable + basic_duty + anti_dumping) * tariff["igst"]
     cess = (assessable + basic_duty) * 0.22 if request.hsn_code == "87032319" else 0
     
-    # Trade agreement benefit
     trade_benefit = 0
     if request.trade_agreement == "INDIA_UAE" and request.destination_country == "AE":
         trade_benefit = basic_duty * 0.30
@@ -278,8 +254,7 @@ async def calculate_duty(request: DutyRequest, current_user: dict = Depends(get_
     
     total_duty = basic_duty + igst + cess + sws + anti_dumping
     landed_cost = assessable + total_duty
-    
-    # Save calculation
+
     calc_id = f"DUTY_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}"
     duty_calc = DutyCalculation(
         calculation_id=calc_id,
@@ -313,23 +288,15 @@ async def calculate_duty(request: DutyRequest, current_user: dict = Depends(get_
         "landed_cost": round(landed_cost, 2),
         "effective_rate": round((total_duty / assessable) * 100, 2)
     }
-
-# ============================================
-# 5. RISK ASSESSMENT ENGINE
-# ============================================
-
 @app.get("/api/risk/assess/{client_id}")
 async def assess_risk(client_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Get payment history
+ 
     payments = db.query(PaymentHistory).filter(PaymentHistory.client_id == client_id).all()
-    
-    # Convert to dict for model
+
     payment_list = [{"days_late": p.days_late, "status": p.status} for p in payments]
-    
-    # Calculate risk using ML model
+
     risk_result = risk_model.calculate_risk_score(payment_list)
-    
-    # Add credit limit based on risk
+
     if risk_result['level'] == 'LOW':
         credit_limit = 500000
         credit_terms = "Net 60 days"
@@ -364,11 +331,6 @@ async def add_payment(client_id: int, invoice_number: str, invoice_amount: float
     db.add(payment)
     db.commit()
     return {"success": True, "payment_id": payment.id}
-
-# ============================================
-# 6. SHIPMENT PROCESSING & TRACKING
-# ============================================
-
 class ShipmentCreate(BaseModel):
     origin_country: str
     origin_port: str
@@ -434,7 +396,6 @@ async def track_shipment(tracking_id: str, db: Session = Depends(get_db)):
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
     
-    # Tracking milestones
     statuses = [
         {"status": "Booked", "location": "Booking Office", "progress": 5},
         {"status": "Confirmed", "location": "Warehouse", "progress": 15},
@@ -473,11 +434,9 @@ async def update_tracking(shipment_id: str, status: str, location: str, db: Sess
     shipment.current_location = location
     shipment.updated_at = datetime.utcnow()
     
-    # Update progress
     progress_map = {"Booked": 5, "Confirmed": 15, "Loaded": 30, "Departed": 50, "Arrived": 70, "Customs": 85, "Delivered": 100}
     shipment.progress = progress_map.get(status, shipment.progress)
     
-    # Add tracking log
     log = TrackingLog(
         tracking_id=shipment.tracking_id,
         status=status,
@@ -489,25 +448,21 @@ async def update_tracking(shipment_id: str, status: str, location: str, db: Sess
     
     return {"success": True, "status": status, "location": location}
 
-# ============================================
-# 7. ANALYTICS DASHBOARD
-# ============================================
 
 @app.get("/api/analytics/dashboard")
 async def get_dashboard(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Get user's shipments
+
     shipments = db.query(Shipment).filter(Shipment.user_id == current_user.id).all()
     
     total_shipments = len(shipments)
     active_shipments = sum(1 for s in shipments if s.status not in ["delivered", "cancelled"])
     total_value = sum(s.total_value or 0 for s in shipments)
-    
-    # Get HSN accuracy
+   
     hsn_results = db.query(HSNResult).filter(HSNResult.user_id == current_user.id).all()
     total_classifications = len(hsn_results)
     manual_corrections = sum(1 for h in hsn_results if h.is_manually_corrected)
     
-    # Monthly trends
+    
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
     shipment_trends = [
         {"month": m, "shipments": random.randint(5, 25), "value": random.randint(50000, 200000)}
@@ -534,11 +489,6 @@ async def get_dashboard(current_user: dict = Depends(get_current_user), db: Sess
             } for s in shipments[-5:]
         ]
     }
-
-# ============================================
-# 8. REPORTS & NOTIFICATIONS
-# ============================================
-
 @app.get("/api/reports/export/{report_type}")
 async def export_report(report_type: str, format: str = "excel", current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     reports = {
@@ -578,11 +528,6 @@ async def send_notification(notification_type: str, recipient: str, message: str
         "status": "delivered",
         "timestamp": datetime.now().isoformat()
     }
-
-# ============================================
-# Root & Health
-# ============================================
-
 @app.get("/")
 async def root():
     return {

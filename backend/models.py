@@ -32,7 +32,7 @@ class HSNClassifier:
                 "Acer Chromebook 14 inch 4GB RAM 64GB eMMC",
                 "Microsoft Surface Pro Tablet Laptop 2-in-1",
                 
-                # Mobile Phones - HSN 8517
+              
                 "iPhone 15 Pro Max 256GB 6.7 inch display A17 chip",
                 "Samsung Galaxy S24 Ultra 5G 12GB RAM 512GB Storage",
                 "OnePlus 12 5G smartphone 16GB RAM 256GB storage",
@@ -40,7 +40,7 @@ class HSNClassifier:
                 "Xiaomi Redmi Note 13 6GB RAM 128GB 5G phone",
                 "Realme 12 Pro Plus 5G smartphone 8GB 256GB",
                 
-                # Pharmaceuticals - HSN 3004
+              
                 "Paracetamol 500mg tablets for pain relief 10 strips",
                 "Amoxicillin 250mg antibiotic capsules 15 capsules",
                 "Vitamin D3 2000IU supplements for bone health",

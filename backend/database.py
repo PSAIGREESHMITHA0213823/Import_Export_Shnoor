@@ -140,8 +140,6 @@ class TrackingLog(Base):
     location = Column(String(255))
     description = Column(Text)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-
-# Create tables
 Base.metadata.create_all(bind=engine)
 
 def get_db():

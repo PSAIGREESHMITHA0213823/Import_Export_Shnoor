@@ -1,147 +1,5 @@
-// import { useEffect, useState, useRef } from "react";
-// import { api } from "../utils/api";
-// import { Chart, registerables } from "chart.js";
-// Chart.register(...registerables);
-
-// export default function Analytics({ onNav }) {
-//   const [data, setData]     = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const trendRef = useRef(null);
-//   const valueRef = useRef(null);
-//   const trendChart = useRef(null);
-//   const valueChart = useRef(null);
-
-//   useEffect(() => {
-//     api.dashboard().then((d) => { setData(d); setLoading(false); }).catch(() => setLoading(false));
-//   }, []);
-
-//   useEffect(() => {
-//     if (!data) return;
-//     const months = data.shipment_trends.map((t) => t.month);
-//     const ships  = data.shipment_trends.map((t) => t.shipments);
-//     const values = data.shipment_trends.map((t) => t.value_usd);
-
-//     if (trendChart.current) trendChart.current.destroy();
-//     trendChart.current = new Chart(trendRef.current, {
-//       type: "bar",
-//       data: {
-//         labels: months,
-//         datasets: [{ label: "Shipments", data: ships, backgroundColor: "rgba(26,58,107,0.85)", borderRadius: 6 }],
-//       },
-//       options: {
-//         responsive: true, maintainAspectRatio: false,
-//         plugins: { legend: { display: false } },
-//         scales: { x: { grid: { display: false } }, y: { grid: { color: "rgba(0,0,0,0.05)" } } },
-//       },
-//     });
-
-//     if (valueChart.current) valueChart.current.destroy();
-//     valueChart.current = new Chart(valueRef.current, {
-//       type: "doughnut",
-//       data: {
-//         labels: months,
-//         datasets: [{
-//           data: values,
-//           backgroundColor: ["#1a3a6b","#3a6abf","#c8992a","#6b8fd6","#e8c875","#8ab4e0"],
-//           borderWidth: 0,
-//         }],
-//       },
-//       options: {
-//         responsive: true, maintainAspectRatio: false,
-//         plugins: { legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 10 } } },
-//         cutout: "65%",
-//       },
-//     });
-
-//     return () => {
-//       trendChart.current?.destroy();
-//       valueChart.current?.destroy();
-//     };
-//   }, [data]);
-
-//   if (loading) return <PageLoading />;
-
-//   const s = data?.summary || {};
-
-//   const QUICK = [
-//     { icon: "🔍", title: "Classify HSN",      sub: "AI-powered HS code",    page: "hsn"       },
-//     { icon: "💰", title: "Calculate Duty",    sub: "Taxes & landed cost",    page: "duty"      },
-//     { icon: "📦", title: "New Shipment",      sub: "Book & track cargo",     page: "shipments" },
-//     { icon: "📄", title: "Upload Document",   sub: "OCR extraction",         page: "documents" },
-//   ];
-
-//   return (
-//     <div className="space-y-6">
-//       {/* Stat cards */}
-//       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-//         <StatCard label="Total Shipments"  value={s.total_shipments}         sub="Portfolio"     />
-//         <StatCard label="Active Shipments" value={s.active_shipments}        sub="In progress"   />
-//         <StatCard label="Total Value (USD)"value={`$${(s.total_value_usd/1e6).toFixed(2)}M`} sub="All time" />
-//         <StatCard label="Compliance Rate"  value={`${s.compliance_rate}%`}   sub="This month" up />
-//       </div>
-
-//       {/* Charts */}
-//       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-//         <Card className="xl:col-span-2" title="Shipment Trends" sub="Monthly shipment volume">
-//           <div className="h-56"><canvas ref={trendRef} /></div>
-//         </Card>
-//         <Card title="Value by Month" sub="USD distribution">
-//           <div className="h-56"><canvas ref={valueRef} /></div>
-//         </Card>
-//       </div>
-
-//       {/* Quick actions */}
-//       <Card title="Quick Actions">
-//         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-//           {QUICK.map((q) => (
-//             <button key={q.page} onClick={() => onNav(q.page)}
-//               className="flex flex-col items-start gap-1 p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition text-left">
-//               <span className="text-2xl">{q.icon}</span>
-//               <span className="font-semibold text-sm text-gray-800">{q.title}</span>
-//               <span className="text-xs text-gray-400">{q.sub}</span>
-//             </button>
-//           ))}
-//         </div>
-//       </Card>
-//     </div>
-//   );
-// }
-
-// export function StatCard({ label, value, sub, up }) {
-//   return (
-//     <div className="bg-white rounded-2xl border border-gray-100 p-5">
-//       <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-1">{label}</p>
-//       <p className="text-3xl font-extrabold tracking-tight text-gray-900">{value ?? "—"}</p>
-//       <p className={`text-xs mt-1 ${up ? "text-green-600" : "text-gray-400"}`}>{sub}</p>
-//     </div>
-//   );
-// }
-
-// export function Card({ title, sub, children, className = "" }) {
-//   return (
-//     <div className={`bg-white rounded-2xl border border-gray-100 p-5 ${className}`}>
-//       {(title || sub) && (
-//         <div className="mb-4">
-//           {title && <p className="font-bold text-gray-900">{title}</p>}
-//           {sub   && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-//         </div>
-//       )}
-//       {children}
-//     </div>
-//   );
-// }
-
-// export function PageLoading() {
-//   return (
-//     <div className="flex items-center justify-center h-64">
-//       <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
-//     </div>
-//   );
-// }
 
 import { useEffect, useState } from "react";
-
-// ─── Icon primitive ───────────────────────────────────────────────────────────
 const Icon = ({ d, size = 16, className = "", style = {} }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={2} strokeLinecap="round"
@@ -168,7 +26,6 @@ const Icons = {
   Map:      <><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></>,
 };
 
-// ─── Sparkline ────────────────────────────────────────────────────────────────
 const Sparkline = ({ data = [], color = "#3b82f6", height = 40 }) => {
   if (!data.length) return null;
   const w = 110, h = height;
@@ -195,7 +52,6 @@ const Sparkline = ({ data = [], color = "#3b82f6", height = 40 }) => {
   );
 };
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
   const map = {
     "In Transit":   "bg-blue-50 text-blue-700 border border-blue-200",
@@ -210,13 +66,10 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// ─── Risk Indicator ───────────────────────────────────────────────────────────
 const RiskDot = ({ level }) => {
   const c = { low: "bg-emerald-400", medium: "bg-amber-400", high: "bg-rose-500" };
   return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${c[level] || "bg-gray-300"}`} />;
-};
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
+}
 export function PageLoading() {
   return (
     <div className="flex items-center justify-center h-64">
@@ -263,10 +116,6 @@ export function Card({ title, sub, children, className = "" }) {
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DATA
-// ─────────────────────────────────────────────────────────────────────────────
 const MONTHS = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const SHIPMENT_TREND = [42, 58, 51, 74, 63, 89];
 
@@ -291,10 +140,6 @@ const QUICK = [
   { icon: "Package", label: "New Shipment",    sub: "Book & track cargo",  page: "shipments", color: "#10b981", bg: "#ecfdf5" },
   { icon: "File",    label: "Upload Document", sub: "OCR extraction",      page: "documents", color: "#f59e0b", bg: "#fffbeb" },
 ];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN
-// ─────────────────────────────────────────────────────────────────────────────
 export default function Analytics({ onNav }) {
   const STAT_CARDS = [
     { label: "Total Shipments",  value: "1,284", sub: "+12.4%", up: true, icon: "Box",      color: "#3b82f6", bg: "#eff6ff", sparkData: [40, 55, 48, 72, 61, 89] },
@@ -306,7 +151,6 @@ export default function Analytics({ onNav }) {
   return (
     <div className="p-6 space-y-5 min-h-screen" style={{ background: "#f8fafc" }}>
 
-      {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Analytics Dashboard</h1>
